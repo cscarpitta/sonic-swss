@@ -37,6 +37,10 @@ private:
     ProducerStateTable  m_vnet_routeTable;
     /* vnet vxlan tunnel table */  
     ProducerStateTable  m_vnet_tunnelTable; 
+    /* srv6 sid list table */
+    ProducerStateTable m_srv6SidListTable;
+    /* srv6 my sid table */
+    ProducerStateTable m_srv6MySidTable;
     struct nl_cache    *m_link_cache;
     struct nl_sock     *m_nl_sock;
 
@@ -48,6 +52,12 @@ private:
 
     void parseEncap(struct rtattr *tb, uint32_t &encap_value, string &rmac);
 
+    void parseEncapSrv6(struct rtattr *tb, string &overlay_sid_str, string &src_addr_str);
+
+    void parseEncapSrv6MyLocalSid(struct rtattr *tb, string &block_len, string &node_len, string &func_len, string &arg_len, string &action, string &vrf, string &adj);
+
+    void parseEncapSrv6SidList(struct rtattr *tb, string &sidlist_name_str, string &sidlist_segs_str);
+
     void parseRtAttrNested(struct rtattr **tb, int max,
                  struct rtattr *rta);
 
@@ -56,6 +66,13 @@ private:
 
     /* Handle prefix route */
     void onEvpnRouteMsg(struct nlmsghdr *h, int len);
+
+    /* Handle prefix route */
+    void onSrv6RouteMsg(struct nlmsghdr *h, int len);
+    
+    void onSrv6MyLocalSidRouteMsg(struct nlmsghdr *h, int len);
+    
+    void onSrv6SidListMsg(struct nlmsghdr *h, int len);
 
     /* Handle vnet route */
     void onVnetRouteMsg(int nlmsg_type, struct nl_object *obj, string vnet);
@@ -75,6 +92,13 @@ private:
                         string& nexthops, string& vni_list, string& mac_list,
                         string& intf_list);
 
+    bool getSrv6NextHop(struct nlmsghdr *h, int received_bytes, 
+                               struct rtattr *tb[], string& overlay_sid, string &src_addr);
+
+    bool getSrv6MyLocalSidNextHop(struct nlmsghdr *h, int received_bytes, 
+                               struct rtattr *tb[], string &block_len, string &node_len,
+                               string &func_len, string &arg_len, string& act, string& vrf, string& adj);
+
     /* Get next hop list */
     void getNextHopList(struct rtnl_route *route_obj, string& gw_list,
                         string& mpls_list, string& intf_list);
@@ -87,6 +111,11 @@ private:
 
     /* Get next hop weights*/
     string getNextHopWt(struct rtnl_route *route_obj);
+
+    /* Get encap type */
+    uint16_t getEncapType(struct nlmsghdr *h);
+
+    const char *myLocalSidAction2Str(uint32_t action);
 };
 
 }
