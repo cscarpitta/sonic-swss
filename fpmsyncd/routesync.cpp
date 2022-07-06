@@ -374,7 +374,7 @@ void RouteSync::parseEncapSrv6MyLocalSid(struct rtattr *tb, string &block_len, s
 
 	if (tb_encap[SRV6_LOCALSID_VRFNAME])
     {
-        memcpy(vrf_name, RTA_DATA(tb_encap[SRV6_LOCALSID_VRFNAME]), IFNAMSIZ + 1);
+        memcpy(vrf_name, (char *)RTA_DATA(tb_encap[SRV6_LOCALSID_VRFNAME]), strlen((char *)RTA_DATA(tb_encap[SRV6_LOCALSID_VRFNAME])));
     }
 
     action = myLocalSidAction2Str(action_buf);
