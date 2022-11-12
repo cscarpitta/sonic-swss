@@ -170,6 +170,7 @@ tests_intfmgrd_LDADD = $(LDADD_GTEST) $(LDADD_SAI) -lnl-genl-3 -lhiredis -lhired
 ## fpmsyncd unit tests
 
 tests_fpmsyncd_SOURCES = fpmsyncd/receive_srv6_steer_routes_ut.cpp \
+                         fpmsyncd/receive_srv6_localsids_ut.cpp \
                          fpmsyncd/ut_helpers_fpmsyncd.cpp \
                          $(top_srcdir)/fpmsyncd/routesync.cpp \
                          $(top_srcdir)/fpmsyncd/fpmlink.cpp \
