@@ -85,6 +85,7 @@ enum srv6_localsid_action_t {
     SRV6_LOCALSID_ACTION_UDT4         = 100,
 	SRV6_LOCALSID_ACTION_UDT6         = 101,
 	SRV6_LOCALSID_ACTION_UDT46        = 102,
+	SRV6_LOCALSID_ACTION_UN           = 103,
 	SRV6_LOCALSID_ACTION_MAX,
 };
 
@@ -294,6 +295,8 @@ const char *RouteSync::myLocalSidAction2Str(uint32_t action)
             return "udt4";
         case SRV6_LOCALSID_ACTION_UDT46:
             return "udt46";
+        case SRV6_LOCALSID_ACTION_UN:
+            return "un";
         default:
             return "unknown";
     }
