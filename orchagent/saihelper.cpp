@@ -73,6 +73,7 @@ sai_counter_api_t*          sai_counter_api;
 sai_bfd_api_t*              sai_bfd_api;
 sai_my_mac_api_t*           sai_my_mac_api;
 sai_generic_programmable_api_t* sai_generic_programmable_api;
+sai_tam_api_t*              sai_tam_api;
 
 extern sai_object_id_t gSwitchId;
 
@@ -199,6 +200,7 @@ void initSaiApi()
     sai_api_query(SAI_API_BFD,                  (void **)&sai_bfd_api);
     sai_api_query(SAI_API_MY_MAC,               (void **)&sai_my_mac_api);
     sai_api_query(SAI_API_GENERIC_PROGRAMMABLE, (void **)&sai_generic_programmable_api);
+    sai_api_query(SAI_API_TAM,                  (void **)&sai_tam_api);
 
     sai_log_set(SAI_API_SWITCH,                 SAI_LOG_LEVEL_NOTICE);
     sai_log_set(SAI_API_BRIDGE,                 SAI_LOG_LEVEL_NOTICE);
@@ -238,6 +240,7 @@ void initSaiApi()
     sai_log_set(SAI_API_BFD,                    SAI_LOG_LEVEL_NOTICE);
     sai_log_set(SAI_API_MY_MAC,                 SAI_LOG_LEVEL_NOTICE);
     sai_log_set(SAI_API_GENERIC_PROGRAMMABLE,   SAI_LOG_LEVEL_NOTICE);
+    sai_log_set(SAI_API_TAM,                    SAI_LOG_LEVEL_NOTICE);
 }
 
 void initSaiRedis()
