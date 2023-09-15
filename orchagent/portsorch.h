@@ -233,6 +233,11 @@ public:
     bool isMACsecPort(sai_object_id_t port_id) const;
     vector<sai_object_id_t> getPortVoQIds(Port& port);
 
+    bool getPortPtIntfId(const Port& port, sai_uint16_t &intf_id);
+    bool setPortPtIntfId(const Port& port, sai_uint16_t intf_id);
+    bool getPortPtTimestampTemplate(const Port& port, sai_port_path_tracing_timestamp_type_t &ts_type);
+    bool setPortPtTimestampTemplate(const Port& port, sai_port_path_tracing_timestamp_type_t ts_type);
+
 private:
     unique_ptr<Table> m_counterTable;
     unique_ptr<Table> m_counterSysPortTable;
@@ -484,6 +489,9 @@ private:
     std::unordered_set<std::string> generateCounterStats(const string& type, bool gearbox = false);
     map<sai_object_id_t, struct queueInfo> m_queueInfo;
 
+    /* Protoypes for Path tracing */
+    bool setPortPtTam(const Port& port, sai_object_id_t tam_id);
+
 private:
     void initializeCpuPort();
     void initializePorts();
@@ -493,6 +501,15 @@ private:
 
     bool addPortBulk(const std::vector<PortConfig> &portList);
     bool removePortBulk(const std::vector<sai_object_id_t> &portList);
+
+    /* Prototypes for Path Tracing */
+    bool createPtTam();
+    sai_status_t removePtTam(sai_object_id_t tam_id);
+    sai_object_id_t m_ptTamReport = SAI_NULL_OBJECT_ID;
+    sai_object_id_t m_ptTamInt = SAI_NULL_OBJECT_ID;
+    sai_object_id_t m_ptTam = SAI_NULL_OBJECT_ID;
+    uint32_t m_ptTamRefCount;
+    map<string, sai_object_id_t> m_portPtTam;
 
 private:
     // Port config aggregator
