@@ -117,6 +117,14 @@ static const std::unordered_map<std::string, Port::Role> portRoleMap =
     { PORT_ROLE_REC, Port::Role::Rec }
 };
 
+static const std::unordered_map<std::string, sai_port_path_tracing_timestamp_type_t> portPtTimestampTemplateMap =
+{
+    { PORT_PT_TIMESTAMP_TEMPLATE_1,    SAI_PORT_PATH_TRACING_TIMESTAMP_TYPE_8_15  },
+    { PORT_PT_TIMESTAMP_TEMPLATE_2,   SAI_PORT_PATH_TRACING_TIMESTAMP_TYPE_12_19 },
+    { PORT_PT_TIMESTAMP_TEMPLATE_3,   SAI_PORT_PATH_TRACING_TIMESTAMP_TYPE_16_23 },
+    { PORT_PT_TIMESTAMP_TEMPLATE_4,   SAI_PORT_PATH_TRACING_TIMESTAMP_TYPE_20_27 }
+};
+
 // functions ----------------------------------------------------------------------------------------------------------
 
 template<typename T>
@@ -230,6 +238,11 @@ std::string PortHelper::getLinkTrainingStr(const PortConfig &port) const
 std::string PortHelper::getAdminStatusStr(const PortConfig &port) const
 {
     return this->getFieldValueStr(port, PORT_ADMIN_STATUS);
+}
+
+std::string PortHelper::getPtTimestampTemplateStr(const PortConfig &port) const
+{
+    return this->getFieldValueStr(port, PORT_PT_TIMESTAMP_TEMPLATE);
 }
 
 bool PortHelper::parsePortAlias(PortConfig &port, const std::string &field, const std::string &value) const
@@ -748,6 +761,53 @@ bool PortHelper::parsePortDescription(PortConfig &port, const std::string &field
     return true;
 }
 
+bool PortHelper::parsePortPtIntfId(PortConfig &port, const std::string &field, const std::string &value) const
+{
+    SWSS_LOG_ENTER();
+
+    if (value.empty())
+    {
+        SWSS_LOG_ERROR("Failed to parse field(%s): empty value is prohibited", field.c_str());
+        return false;
+    }
+
+    try
+    {
+        port.pt_intf_id.value = to_uint<std::uint16_t>(value);
+        port.pt_intf_id.is_set = true;
+    }
+    catch (const std::exception &e)
+    {
+        SWSS_LOG_ERROR("Failed to parse field(%s): %s", field.c_str(), e.what());
+        return false;
+    }
+
+    return true;
+}
+
+bool PortHelper::parsePortPtTimestampTemplate(PortConfig &port, const std::string &field, const std::string &value) const
+{
+    SWSS_LOG_ENTER();
+
+    if (value.empty())
+    {
+        SWSS_LOG_ERROR("Failed to parse field(%s): empty value is prohibited", field.c_str());
+        return false;
+    }
+
+    const auto &cit = portPtTimestampTemplateMap.find(value);
+    if (cit == portPtTimestampTemplateMap.cend())
+    {
+        SWSS_LOG_ERROR("Failed to parse field(%s): invalid value(%s)", field.c_str(), value.c_str());
+        return false;
+    }
+
+    port.pt_timestamp_template.value = cit->second;
+    port.pt_timestamp_template.is_set = true;
+
+    return true;
+}
+
 bool PortHelper::parsePortConfig(PortConfig &port) const
 {
     SWSS_LOG_ENTER();
@@ -991,6 +1051,20 @@ bool PortHelper::parsePortConfig(PortConfig &port) const
         else if (field == PORT_DESCRIPTION)
         {
             if (!this->parsePortDescription(port, field, value))
+            {
+                return false;
+            }
+        }
+        else if (field == PORT_PT_INTF_ID)
+        {
+            if (!this->parsePortPtIntfId(port, field, value))
+            {
+                return false;
+            }
+        }
+        else if (field == PORT_PT_TIMESTAMP_TEMPLATE)
+        {
+            if (!this->parsePortPtTimestampTemplate(port, field, value))
             {
                 return false;
             }
