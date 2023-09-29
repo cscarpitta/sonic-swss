@@ -696,6 +696,21 @@ PortsOrch::PortsOrch(DBConnector *db, DBConnector *stateDb, vector<table_name_wi
         m_lagIdAllocator = unique_ptr<LagIdAllocator> (new LagIdAllocator(chassisAppDb));
     }
 
+    /* Query Path Tracing capability */
+    vector<FieldValueTuple> fvVector;
+    if (gSwitchOrch->querySwitchCapability(SAI_OBJECT_TYPE_PORT, SAI_PORT_ATTR_PATH_TRACING_INTF) &&
+            gSwitchOrch->querySwitchCapability(SAI_OBJECT_TYPE_PORT, SAI_PORT_ATTR_PATH_TRACING_TIMESTAMP_TYPE))
+    {
+        SWSS_LOG_INFO("Path Tracing is supported");
+        fvVector.emplace_back(SWITCH_CAPABILITY_TABLE_PATH_TRACING_CAPABLE, "true");
+    }
+    else
+    {
+        SWSS_LOG_INFO("Path Tracing is not supported");
+        fvVector.emplace_back(SWITCH_CAPABILITY_TABLE_PATH_TRACING_CAPABLE, "false");
+    }
+    gSwitchOrch->set_switch_capability(fvVector);
+
     auto executor = new ExecutableTimer(m_port_state_poller, this, "PORT_STATE_POLLER");
     Orch::addExecutor(executor);
 }
