@@ -765,15 +765,22 @@ bool PortHelper::parsePortPtIntfId(PortConfig &port, const std::string &field, c
 {
     SWSS_LOG_ENTER();
 
-    if (value.empty())
-    {
-        SWSS_LOG_ERROR("Failed to parse field(%s): empty value is prohibited", field.c_str());
-        return false;
-    }
-
     try
     {
-        port.pt_intf_id.value = to_uint<std::uint16_t>(value);
+        if (value != "None")
+        {
+            port.pt_intf_id.value = to_uint<std::uint16_t>(value);
+        }
+        else
+        {
+            /*
+             * In SAI, Path Tracing Interface ID 0 means Path Tracing disabled.
+             * When Path Tracing Interface ID is not set (i.e., value is None),
+             * we set the Interface ID to 0 in ASIC DB in order to disable
+             * Path Tracing on the port.
+             */
+            port.pt_intf_id.value = 0;
+        }
         port.pt_intf_id.is_set = true;
     }
     catch (const std::exception &e)
@@ -788,14 +795,20 @@ bool PortHelper::parsePortPtIntfId(PortConfig &port, const std::string &field, c
 bool PortHelper::parsePortPtTimestampTemplate(PortConfig &port, const std::string &field, const std::string &value) const
 {
     SWSS_LOG_ENTER();
+    std::unordered_map<std::string, sai_port_path_tracing_timestamp_type_t>::const_iterator cit;
 
-    if (value.empty())
+    if (value != "None")
     {
-        SWSS_LOG_ERROR("Failed to parse field(%s): empty value is prohibited", field.c_str());
-        return false;
+        cit = portPtTimestampTemplateMap.find(value);
     }
-
-    const auto &cit = portPtTimestampTemplateMap.find(value);
+    else
+    {
+        /*
+         * When Path Tracing Timestamp Template is not specified (i.e., value is None),
+         * we use Template3 (which is the default template in SAI).
+         */
+        cit = portPtTimestampTemplateMap.find("template3");
+    }
     if (cit == portPtTimestampTemplateMap.cend())
     {
         SWSS_LOG_ERROR("Failed to parse field(%s): invalid value(%s)", field.c_str(), value.c_str());
