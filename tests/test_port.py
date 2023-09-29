@@ -338,7 +338,7 @@ class TestPort(object):
             if fv[0] == "SAI_PORT_ATTR_PATH_TRACING_TIMESTAMP_TYPE":
                 assert fv[1] == "SAI_PORT_PATH_TRACING_TIMESTAMP_TYPE_16_23"
 
-    def test_PortPtTimestampTemplate2(self, dvs, testlog):
+    def test_PortPtNonDefaultTimestampTemplate(self, dvs, testlog):
         pdb = swsscommon.DBConnector(0, dvs.redis_sock, 0)
         adb = swsscommon.DBConnector(1, dvs.redis_sock, 0)
         cdb = swsscommon.DBConnector(4, dvs.redis_sock, 0)
