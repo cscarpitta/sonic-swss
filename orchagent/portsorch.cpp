@@ -1026,8 +1026,7 @@ bool PortsOrch::removePortBulk(const std::vector<sai_object_id_t> &portList)
             m_ptTamRefCount--;
             if (m_ptTamRefCount == 0)
             {
-                sai_status_t status = removePtTam(m_ptTam);
-                if (status != SAI_STATUS_SUCCESS)
+                if (!removePtTam(m_ptTam))
                 {
                     throw runtime_error("Remove port TAM object for Path Tracing failed");
                 }
@@ -4611,11 +4610,18 @@ void PortsOrch::doPortTask(Consumer &consumer)
              */
             if (m_portPtTam.find(alias) != m_portPtTam.end())
             {
+                if (!setPortPtTam(p, SAI_NULL_OBJECT_ID))
+                {
+                    SWSS_LOG_ERROR(
+                        "Failed to unset port %s TAM object for Path Tracing",
+                        p.m_alias.c_str()
+                    );
+                }
                 m_ptTamRefCount--;
+                m_portPtTam.erase(alias);
                 if (m_ptTamRefCount == 0)
                 {
-                    sai_status_t status = removePtTam(m_ptTam);
-                    if (status != SAI_STATUS_SUCCESS)
+                    if (!removePtTam(m_ptTam))
                     {
                         throw runtime_error("Remove port TAM object for Path Tracing failed");
                     }
@@ -9412,17 +9418,19 @@ bool PortsOrch::setPortPtTimestampTemplate(const Port& port, sai_port_path_traci
 
 bool PortsOrch::setPortPtTam(const Port& port, sai_object_id_t tam_id)
 {
-    vector<sai_object_id_t> tam_objects_list;
+    sai_attribute_t attr;
+
+    attr.id = SAI_PORT_ATTR_TAM_OBJECT;
 
     if (tam_id != SAI_NULL_OBJECT_ID)
     {
-        tam_objects_list.push_back(tam_id);
+        attr.value.objlist.count = 1;
+        attr.value.objlist.list = &tam_id;
     }
-
-    sai_attribute_t attr;
-    attr.id = SAI_PORT_ATTR_TAM_OBJECT;
-    attr.value.objlist.count = (uint32_t)tam_objects_list.size();
-    attr.value.objlist.list = tam_objects_list.data();
+    else
+    {
+        attr.value.objlist.count = 0;
+    }
 
     sai_status_t status = sai_port_api->set_port_attribute(port.m_port_id, &attr);
 
@@ -9521,15 +9529,13 @@ bool PortsOrch::createPtTam()
     /* Finally, create a TAM object */
     if (m_ptTam == SAI_NULL_OBJECT_ID)
     {
-        vector<sai_object_id_t> tam_int_objects_list;
         sai_object_id_t tam_id;
 
         attrs.clear();
 
         attr.id = SAI_TAM_ATTR_INT_OBJECTS_LIST;
-        tam_int_objects_list.push_back(m_ptTamInt);
-        attr.value.objlist.count = (uint32_t)tam_int_objects_list.size();
-        attr.value.objlist.list = tam_int_objects_list.data();
+        attr.value.objlist.count = 1;
+        attr.value.objlist.list = &m_ptTamInt;
         attrs.push_back(attr);
 
         status = sai_tam_api->create_tam(&tam_id, gSwitchId, static_cast<uint32_t>(attrs.size()), attrs.data());
@@ -9553,11 +9559,11 @@ bool PortsOrch::createPtTam()
     return true;
 }
 
-sai_status_t PortsOrch::removePtTam(sai_object_id_t tam_id)
+bool PortsOrch::removePtTam(sai_object_id_t tam_id)
 {
     SWSS_LOG_ENTER();
 
-    sai_status_t status = SAI_STATUS_SUCCESS;
+    sai_status_t status;
 
     if (m_ptTam != SAI_NULL_OBJECT_ID)
     {
@@ -9565,7 +9571,7 @@ sai_status_t PortsOrch::removePtTam(sai_object_id_t tam_id)
         if (status != SAI_STATUS_SUCCESS)
         {
             SWSS_LOG_ERROR("Failed to remove TAM object for Path Tracing, rv:%d", status);
-            return status;
+            return false;
         }
 
         SWSS_LOG_NOTICE("Removed TAM %" PRIx64, m_ptTam);
@@ -9578,7 +9584,7 @@ sai_status_t PortsOrch::removePtTam(sai_object_id_t tam_id)
         if (status != SAI_STATUS_SUCCESS)
         {
             SWSS_LOG_ERROR("Failed to remove TAM INT object for Path Tracing, rv:%d", status);
-            return status;
+            return false;
         }
 
         SWSS_LOG_NOTICE("Removed TAM INT %" PRIx64, m_ptTamInt);
@@ -9591,14 +9597,14 @@ sai_status_t PortsOrch::removePtTam(sai_object_id_t tam_id)
         if (status != SAI_STATUS_SUCCESS)
         {
             SWSS_LOG_ERROR("Failed to remove TAM Report for Path Tracing, rv:%d", status);
-            return status;
+            return false;
         }
 
         SWSS_LOG_NOTICE("Removed TAM Report %" PRIx64, m_ptTamReport);
         m_ptTamReport = SAI_NULL_OBJECT_ID;
     }
 
-    return status;
+    return true;
 }
 
 void PortsOrch::doTask(swss::SelectableTimer &timer)

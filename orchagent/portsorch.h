@@ -531,11 +531,11 @@ private:
 
     /* Prototypes for Path Tracing */
     bool createPtTam();
-    sai_status_t removePtTam(sai_object_id_t tam_id);
+    bool removePtTam(sai_object_id_t tam_id);
     sai_object_id_t m_ptTamReport = SAI_NULL_OBJECT_ID;
     sai_object_id_t m_ptTamInt = SAI_NULL_OBJECT_ID;
     sai_object_id_t m_ptTam = SAI_NULL_OBJECT_ID;
-    uint32_t m_ptTamRefCount;
+    uint32_t m_ptTamRefCount = 0;
     map<string, sai_object_id_t> m_portPtTam;
 
 private:
