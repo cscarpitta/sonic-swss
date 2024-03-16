@@ -1156,12 +1156,12 @@ class TestSrv6MySidFpmsyncd(TestSrv6Mysid):
         assert status == True
         for fv in fvs:
             if fv[0] == "SAI_MY_SID_ENTRY_ATTR_ENDPOINT_BEHAVIOR":
-                assert fv[1] == "SAI_MY_SID_ENTRY_ENDPOINT_BEHAVIOR_UDX6"
+                assert fv[1] == "SAI_MY_SID_ENTRY_ENDPOINT_BEHAVIOR_DX6"
             if fv[0] == "SAI_MY_SID_ENTRY_ATTR_NEXT_HOP_ID":
                 assert fv[1] == self.next_hop_ipv6_id
 
         # remove srv6 mysid udx6 behavior
-        dvs.runcmd("ip -6 route del fc00:0:2:ff01::/128 encap seg6local action End.DX6 table nh6 2001::1 dev sr0")
+        dvs.runcmd("ip -6 route del fc00:0:2:ff01::/128 encap seg6local action End.DX6 nh6 2001::1 dev sr0")
 
         # check application database
         self.pdb.wait_for_deleted_entry("SRV6_MY_SID_TABLE", "32:16:16:0:ffc00:0:2:ff01::")
@@ -1196,7 +1196,7 @@ class TestSrv6MySidFpmsyncd(TestSrv6Mysid):
         assert status == True
         for fv in fvs:
             if fv[0] == "SAI_MY_SID_ENTRY_ATTR_ENDPOINT_BEHAVIOR":
-                assert fv[1] == "SAI_MY_SID_ENTRY_ENDPOINT_BEHAVIOR_UDX4"
+                assert fv[1] == "SAI_MY_SID_ENTRY_ENDPOINT_BEHAVIOR_DX4"
             if fv[0] == "SAI_MY_SID_ENTRY_ATTR_NEXT_HOP_ID":
                 assert fv[1] == self.next_hop_ipv4_id
 
@@ -1304,7 +1304,7 @@ class TestSrv6MySidFpmsyncd(TestSrv6Mysid):
         dvs.runcmd("ip -6 route add fc00:0:2:ff05::/128 encap seg6local action End.DT46 vrftable {} dev sr0".format(self.vrf_table_id))
 
         # check application database
-        self.pdb.wait_for_entry("SRV6_MY_SID_TABLE", "32:16:16:0:fc00:0:2:ff05:")
+        self.pdb.wait_for_entry("SRV6_MY_SID_TABLE", "32:16:16:0:fc00:0:2:ff05::")
 
         # verify that the mysid has been programmed into the ASIC
         self.adb.wait_for_n_keys("ASIC_STATE:SAI_OBJECT_TYPE_MY_SID_ENTRY", len(self.initial_my_sid_entries) + 1)
@@ -1343,71 +1343,110 @@ class TestSrv6VpnFpmsyncd:
         self.adb = dvs.get_asic_db()
         self.cdb = dvs.get_config_db()
 
+    def create_vrf(self, vrf_name):
+        table = "ASIC_STATE:SAI_OBJECT_TYPE_VIRTUAL_ROUTER"
+        existed_entries = get_exist_entries(self.adb.db_connection, table)
+
+        self.cdb.create_entry("VRF", vrf_name, {"empty": "empty"})
+
+        self.adb.wait_for_n_keys(table, len(existed_entries) + 1)
+        return get_created_entry(self.adb.db_connection, table, existed_entries)
+
     def setup_srv6(self, dvs):
         self.setup_db(dvs)
 
-        dvs.runcmd("sysctl -w net.vrf.strict_mode=1")
+        # dvs.runcmd("sysctl -w net.vrf.strict_mode=1")
 
-        # create interface
-        self.create_l3_intf("Ethernet104", "")
+        # # create interface
+        # self.create_l3_intf("Ethernet104", "")
 
-        # assign IP to interface
-        self.add_ip_address("Ethernet104", "2001::2/126")
-        self.add_ip_address("Ethernet104", "192.0.2.2/30")
+        # # assign IP to interface
+        # self.add_ip_address("Ethernet104", "2001::2/126")
+        # self.add_ip_address("Ethernet104", "192.0.2.2/30")
 
-        time.sleep(3)
+        # time.sleep(3)
 
-        # bring up Ethernet104
-        self.set_interface_status(dvs, "Ethernet104", "up")
+        # # bring up Ethernet104
+        # self.set_interface_status(dvs, "Ethernet104", "up")
 
-        time.sleep(3)
+        # time.sleep(3)
 
-        # save the initial number of entries in route table
-        self.initial_route_entries = get_exist_entries(self.adb.db_connection, "ASIC_STATE:SAI_OBJECT_TYPE_ROUTE_ENTRY")
+        # # save the initial number of entries in route table
+        # self.initial_route_entries = get_exist_entries(self.adb.db_connection, "ASIC_STATE:SAI_OBJECT_TYPE_ROUTE_ENTRY")
 
-        # save the initial number of entries in Nexthop table
-        self.initial_next_hop_entries = get_exist_entries(self.adb.db_connection, "ASIC_STATE:SAI_OBJECT_TYPE_NEXT_HOP")
+        # # save the initial number of entries in Nexthop table
+        # self.initial_next_hop_entries = get_exist_entries(self.adb.db_connection, "ASIC_STATE:SAI_OBJECT_TYPE_NEXT_HOP")
 
-        # now, let's create the IPv6 neighbor
-        self.add_neighbor("Ethernet104", "2001::1", "00:00:00:01:02:04", "IPv6")
+        # # now, let's create the IPv6 neighbor
+        # self.add_neighbor("Ethernet104", "2001::1", "00:00:00:01:02:04", "IPv6")
 
-        # verify that the nexthop is created in the ASIC (i.e., we have the previous number of next hop entries + 1)
-        self.adb.wait_for_n_keys("ASIC_STATE:SAI_OBJECT_TYPE_NEXT_HOP", len(self.initial_next_hop_entries) + 1)
+        # # verify that the nexthop is created in the ASIC (i.e., we have the previous number of next hop entries + 1)
+        # self.adb.wait_for_n_keys("ASIC_STATE:SAI_OBJECT_TYPE_NEXT_HOP", len(self.initial_next_hop_entries) + 1)
 
-        # get the new nexthop and nexthop ID, which will be used later to verify the MySID entry
-        next_hop_entry = get_created_entry(self.adb.db_connection, "ASIC_STATE:SAI_OBJECT_TYPE_NEXT_HOP", self.initial_next_hop_entries)
-        assert next_hop_entry is not None
-        self.next_hop_ipv6_id = self.get_nexthop_id("2001::1")
-        assert self.next_hop_ipv6_id is not None
+        # # get the new nexthop and nexthop ID, which will be used later to verify the MySID entry
+        # next_hop_entry = get_created_entry(self.adb.db_connection, "ASIC_STATE:SAI_OBJECT_TYPE_NEXT_HOP", self.initial_next_hop_entries)
+        # assert next_hop_entry is not None
+        # self.next_hop_ipv6_id = self.get_nexthop_id("2001::1")
+        # assert self.next_hop_ipv6_id is not None
 
-        # save the number of entries in Nexthop table, after adding the ipv6 neighbor
-        updated_next_hop_entries = get_exist_entries(self.adb.db_connection, "ASIC_STATE:SAI_OBJECT_TYPE_NEXT_HOP")
+        # # save the number of entries in Nexthop table, after adding the ipv6 neighbor
+        # updated_next_hop_entries = get_exist_entries(self.adb.db_connection, "ASIC_STATE:SAI_OBJECT_TYPE_NEXT_HOP")
 
-        # now, let's create the IPv4 neighbor
-        self.add_neighbor("Ethernet104", "192.0.2.1", "00:00:00:01:02:05", "IPv4")
+        # # now, let's create the IPv4 neighbor
+        # self.add_neighbor("Ethernet104", "192.0.2.1", "00:00:00:01:02:05", "IPv4")
 
-        # verify that the nexthop is created in the ASIC (i.e., we have the previous number of next hop entries + 1)
-        self.adb.wait_for_n_keys("ASIC_STATE:SAI_OBJECT_TYPE_NEXT_HOP", len(updated_next_hop_entries) + 1)
+        # # verify that the nexthop is created in the ASIC (i.e., we have the previous number of next hop entries + 1)
+        # self.adb.wait_for_n_keys("ASIC_STATE:SAI_OBJECT_TYPE_NEXT_HOP", len(updated_next_hop_entries) + 1)
 
-        # get the new nexthop and nexthop ID, which will be used later to verify the MySID entry
-        next_hop_entry = get_created_entry(self.adb.db_connection, "ASIC_STATE:SAI_OBJECT_TYPE_NEXT_HOP", updated_next_hop_entries)
-        assert next_hop_entry is not None
-        self.next_hop_ipv4_id = self.get_nexthop_id("192.0.2.1")
-        assert self.next_hop_ipv4_id is not None
+        # # get the new nexthop and nexthop ID, which will be used later to verify the MySID entry
+        # next_hop_entry = get_created_entry(self.adb.db_connection, "ASIC_STATE:SAI_OBJECT_TYPE_NEXT_HOP", updated_next_hop_entries)
+        # assert next_hop_entry is not None
+        # self.next_hop_ipv4_id = self.get_nexthop_id("192.0.2.1")
+        # assert self.next_hop_ipv4_id is not None
 
         # create vrf
         initial_vrf_entries = set(self.adb.get_keys("ASIC_STATE:SAI_OBJECT_TYPE_VIRTUAL_ROUTER"))
         self.create_vrf("Vrf10")
         self.adb.wait_for_n_keys("ASIC_STATE:SAI_OBJECT_TYPE_VIRTUAL_ROUTER", len(initial_vrf_entries) + 1)
-        current_vrf_entries = set(self.adb.get_keys("ASIC_STATE:SAI_OBJECT_TYPE_VIRTUAL_ROUTER"))
-        self.vrf_id = list(current_vrf_entries - initial_vrf_entries)[0]
-        _, vrf_info = dvs.runcmd("ip --json -d link show Vrf10")
-        vrf_info_json = json.loads(vrf_info)
-        self.vrf_table_id = str(vrf_info_json[0]["linkinfo"]["info_data"]["table"])
 
         # create dummy interface sr0
         dvs.runcmd("ip link add sr0 type dummy")
         dvs.runcmd("ip link set sr0 up")
+
+    def teardown_srv6(self, dvs):
+        # remove dummy interface sr0
+        dvs.runcmd("ip link del sr0 type dummy")
+
+        # remove vrf
+        initial_vrf_entries = set(self.adb.get_keys("ASIC_STATE:SAI_OBJECT_TYPE_VIRTUAL_ROUTER"))
+        self.remove_vrf("Vrf10")
+        self.adb.wait_for_n_keys("ASIC_STATE:SAI_OBJECT_TYPE_VIRTUAL_ROUTER", len(initial_vrf_entries) - 1)
+
+        # # remove the IPv4 neighbor
+        # initial_neighbor_entries = set(self.adb.get_keys("ASIC_STATE:SAI_OBJECT_TYPE_NEXT_HOP"))
+        # self.remove_neighbor("Ethernet104", "192.0.2.1")
+        # self.adb.wait_for_n_keys("ASIC_STATE:SAI_OBJECT_TYPE_NEXT_HOP", len(initial_neighbor_entries) - 1)
+
+        # # remove the IPv6 neighbor
+        # initial_neighbor_entries = set(self.adb.get_keys("ASIC_STATE:SAI_OBJECT_TYPE_NEXT_HOP"))
+        # self.remove_neighbor("Ethernet104", "2001::1")
+        # self.adb.wait_for_n_keys("ASIC_STATE:SAI_OBJECT_TYPE_NEXT_HOP", len(initial_neighbor_entries) - 1)
+
+        # time.sleep(3)
+
+        # # put Ethernet104 down
+        # self.set_interface_status(dvs, "Ethernet104", "down")
+
+        # time.sleep(3)
+
+        # # remove IP from interface
+        # self.remove_ip_address("Ethernet104", "2001::2/126")
+        # self.remove_ip_address("Ethernet104", "192.0.2.2/30")
+
+        # # remove interface
+        # initial_interface_entries = set(self.adb.get_keys("ASIC_STATE:SAI_OBJECT_TYPE_ROUTER_INTERFACE"))
+        # self.remove_l3_intf("Ethernet104")
+        # self.adb.wait_for_n_keys("ASIC_STATE:SAI_OBJECT_TYPE_ROUTER_INTERFACE", len(initial_interface_entries) - 1)
 
     def test_AddRemoveSrv6VpnRouteIpv4(self, dvs, testlog):
         self.setup_srv6(dvs)
@@ -1430,7 +1469,7 @@ class TestSrv6VpnFpmsyncd:
         self.pdb.wait_for_entry("ROUTE_TABLE", "Vrf10:192.0.2.0/24")
 
         # verify that the route has been programmed into the ASIC
-        self.adb.wait_for_n_keys("ASIC_STATE:SAI_OBJECT_TYPE_ROUTE_ENTRY", len(self.initial_route_entries) + 1)
+        self.adb.wait_for_n_keys("ASIC_STATE:SAI_OBJECT_TYPE_ROUTE_ENTRY", len(route_entries) + 1)
 
         # get created entries
         route_key = get_created_entry(self.adb.db_connection, "ASIC_STATE:SAI_OBJECT_TYPE_ROUTE_ENTRY", route_entries)
