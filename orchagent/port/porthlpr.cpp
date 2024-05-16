@@ -116,7 +116,8 @@ static const std::unordered_map<std::string, Port::Role> portRoleMap =
     { PORT_ROLE_EXT, Port::Role::Ext },
     { PORT_ROLE_INT, Port::Role::Int },
     { PORT_ROLE_INB, Port::Role::Inb },
-    { PORT_ROLE_REC, Port::Role::Rec }
+    { PORT_ROLE_REC, Port::Role::Rec },
+    { PORT_ROLE_DPC, Port::Role::Dpc }
 };
 
 static const std::unordered_map<std::string, sai_port_path_tracing_timestamp_type_t> portPtTimestampTemplateMap =

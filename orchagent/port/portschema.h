@@ -51,6 +51,7 @@
 #define PORT_ROLE_INT "Int"
 #define PORT_ROLE_INB "Inb"
 #define PORT_ROLE_REC "Rec"
+#define PORT_ROLE_DPC "Dpc"
 
 #define PORT_PT_TIMESTAMP_TEMPLATE_1 "template1"
 #define PORT_PT_TIMESTAMP_TEMPLATE_2 "template2"
