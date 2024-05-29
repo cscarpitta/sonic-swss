@@ -3,8 +3,10 @@ import re
 import time
 import json
 import pytest
+import distro
 
 from swsscommon import swsscommon
+from distutils.version import StrictVersion
 from dvslib.dvs_common import wait_for_result
 
 def get_exist_entries(db, table):
@@ -899,7 +901,7 @@ class TestSrv6MySidFpmsyncd(object):
 
         self.teardown_srv6(dvs)
 
-    def test_AddRemoveSrv6MySidEndDT46(self, dvs, testlog):
+    def test_AddRemoveSrv6MySidEndDT6(self, dvs, testlog):
 
         _, output = dvs.runcmd(f"vtysh -c 'show zebra dplane providers'")
         if 'dplane_fpm_sonic' not in output:
@@ -910,8 +912,8 @@ class TestSrv6MySidFpmsyncd(object):
         # configure srv6 locator
         dvs.runcmd("vtysh -c \"configure terminal\" -c \"segment-routing\" -c \"srv6\" -c \"locators\" -c \"locator loc1\" -c \"prefix fc00:0:0:1::/64 block-len 40 node-len 24 func-bits 16\"")
 
-        # create srv6 mysid end.dt46 behavior
-        dvs.runcmd("ip -6 route add fc00:0:0:1:6b::/128 encap seg6local action End.DT46 vrftable {} dev sr0".format(self.vrf_table_id))
+        # create srv6 mysid end.dt6 behavior
+        dvs.runcmd("ip -6 route add fc00:0:0:1:6b::/128 encap seg6local action End.DT6 vrftable {} dev sr0".format(self.vrf_table_id))
 
         # check application database
         self.pdb.wait_for_entry("SRV6_MY_SID_TABLE", "40:24:16:0:fc00:0:0:1:6b::")
@@ -926,12 +928,12 @@ class TestSrv6MySidFpmsyncd(object):
         assert status == True
         for fv in fvs:
             if fv[0] == "SAI_MY_SID_ENTRY_ATTR_ENDPOINT_BEHAVIOR":
-                assert fv[1] == "SAI_MY_SID_ENTRY_ENDPOINT_BEHAVIOR_DT46"
+                assert fv[1] == "SAI_MY_SID_ENTRY_ENDPOINT_BEHAVIOR_DT6"
             if fv[0] == "SAI_MY_SID_ENTRY_ATTR_VRF":
                 assert fv[1] == self.vrf_id
 
-        # remove srv6 mysid end.dt46 behavior
-        dvs.runcmd("ip -6 route del fc00:0:0:1:6b::/128 encap seg6local action End.DT46 vrftable {} dev sr0".format(self.vrf_table_id))
+        # remove srv6 mysid end.dt6 behavior
+        dvs.runcmd("ip -6 route del fc00:0:0:1:6b::/128 encap seg6local action End.DT6 vrftable {} dev sr0".format(self.vrf_table_id))
 
         # check application database
         self.pdb.wait_for_deleted_entry("SRV6_MY_SID_TABLE", "40:24:16:0:fc00:0:0:1:6b::")
@@ -944,7 +946,7 @@ class TestSrv6MySidFpmsyncd(object):
 
         self.teardown_srv6(dvs)
 
-    def test_AddRemoveSrv6MySidUN(self, dvs, testlog):
+    def test_AddRemoveSrv6MySidUDT6(self, dvs, testlog):
 
         _, output = dvs.runcmd(f"vtysh -c 'show zebra dplane providers'")
         if 'dplane_fpm_sonic' not in output:
@@ -955,100 +957,8 @@ class TestSrv6MySidFpmsyncd(object):
         # configure srv6 usid locator
         dvs.runcmd("vtysh -c \"configure terminal\" -c \"segment-routing\" -c \"srv6\" -c \"locators\" -c \"locator loc1\" -c \"prefix fc00:0:2::/48 block-len 32 node-len 16 func-bits 16\" -c \"behavior usid\"")
 
-        # create srv6 mysid un behavior
-        dvs.runcmd("ip -6 route add fc00:0:2::/48 encap seg6local action End dev sr0")
-        # dvs.runcmd("ip -6 route add fc00:0:2::/48 encap seg6local action End flavors next-csid lblen 32 nflen 16 dev sr0")
-
-        # check application database
-        self.pdb.wait_for_entry("SRV6_MY_SID_TABLE", "32:16:16:0:fc00:0:2::")
-
-        # verify that the mysid has been programmed into the ASIC
-        self.adb.wait_for_n_keys("ASIC_STATE:SAI_OBJECT_TYPE_MY_SID_ENTRY", len(self.initial_my_sid_entries) + 1)
-
-        # check ASIC SAI_OBJECT_TYPE_MY_SID_ENTRY database
-        my_sid = get_created_entry(self.adb.db_connection, "ASIC_STATE:SAI_OBJECT_TYPE_MY_SID_ENTRY", self.initial_my_sid_entries)
-        tbl = swsscommon.Table(self.adb.db_connection, "ASIC_STATE:SAI_OBJECT_TYPE_MY_SID_ENTRY")
-        (status, fvs) = tbl.get(my_sid)
-        assert status == True
-        for fv in fvs:
-            if fv[0] == "SAI_MY_SID_ENTRY_ATTR_ENDPOINT_BEHAVIOR":
-                assert fv[1] == "SAI_MY_SID_ENTRY_ENDPOINT_BEHAVIOR_UN"
-
-        # remove srv6 mysid un behavior
-        dvs.runcmd("ip -6 route del fc00:0:2::/48 encap seg6local action End dev sr0".format(self.vrf_table_id))
-        # dvs.runcmd("ip -6 route del fc00:0:2::/48 encap seg6local action End flavors next-csid lblen 32 nflen 16 dev sr0".format(self.vrf_table_id))
-
-        # check application database
-        self.pdb.wait_for_deleted_entry("SRV6_MY_SID_TABLE", "32:16:16:0:fc00:0:2::")
-
-        # verify that the mysid has been removed from the ASIC
-        self.adb.wait_for_n_keys("ASIC_STATE:SAI_OBJECT_TYPE_MY_SID_ENTRY", len(self.initial_my_sid_entries))
-
-        # unconfigure srv6 locator
-        dvs.runcmd("vtysh -c \"configure terminal\" -c \"segment-routing\" -c \"no srv6\"")
-
-        self.teardown_srv6(dvs)
-
-    def test_AddRemoveSrv6MySidUA(self, dvs, testlog):
-
-        _, output = dvs.runcmd(f"vtysh -c 'show zebra dplane providers'")
-        if 'dplane_fpm_sonic' not in output:
-            pytest.skip("'dplane_fpm_sonic' required for this test is not available, skipping", allow_module_level=True)
-
-        self.setup_srv6(dvs)
-
-        # configure srv6 usid locator
-        dvs.runcmd("vtysh -c \"configure terminal\" -c \"segment-routing\" -c \"srv6\" -c \"locators\" -c \"locator loc1\" -c \"prefix fc00:0:2::/48 block-len 32 node-len 16 func-bits 16\" -c \"behavior usid\"")
-
-        # create srv6 mysid ua behavior
-        dvs.runcmd("ip -6 route add fc00:0:2:ff00::/64 encap seg6local action End.X nh6 2001::1 dev sr0")
-        # dvs.runcmd("ip -6 route add fc00:0:2:ff00::/64 encap seg6local action End.X nh6 2001::1 flavors next-csid lblen 32 nflen 16 dev sr0")
-
-        # check application database
-        self.pdb.wait_for_entry("SRV6_MY_SID_TABLE", "32:16:16:0:fc00:0:2:ff00::")
-
-        # verify that the mysid has been programmed into the ASIC
-        self.adb.wait_for_n_keys("ASIC_STATE:SAI_OBJECT_TYPE_MY_SID_ENTRY", len(self.initial_my_sid_entries) + 1)
-
-        # check ASIC SAI_OBJECT_TYPE_MY_SID_ENTRY database
-        my_sid = get_created_entry(self.adb.db_connection, "ASIC_STATE:SAI_OBJECT_TYPE_MY_SID_ENTRY", self.initial_my_sid_entries)
-        tbl = swsscommon.Table(self.adb.db_connection, "ASIC_STATE:SAI_OBJECT_TYPE_MY_SID_ENTRY")
-        (status, fvs) = tbl.get(my_sid)
-        assert status == True
-        for fv in fvs:
-            if fv[0] == "SAI_MY_SID_ENTRY_ATTR_ENDPOINT_BEHAVIOR":
-                assert fv[1] == "SAI_MY_SID_ENTRY_ENDPOINT_BEHAVIOR_UA"
-            if fv[0] == "SAI_MY_SID_ENTRY_ATTR_NEXT_HOP_ID":
-                assert fv[1] == self.next_hop_ipv6_id
-
-        # remove srv6 mysid ua behavior
-        dvs.runcmd("ip -6 route del fc00:0:2:ff00::/64 encap seg6local action End.DT6 nh6 2001::1 dev sr0")
-        # dvs.runcmd("ip -6 route del fc00:0:2:ff00::/64 encap seg6local action End.DT6 nh6 2001::1 flavors next-csid lblen 32 nflen 16 dev sr0")
-
-        # check application database
-        self.pdb.wait_for_deleted_entry("SRV6_MY_SID_TABLE", "32:16:16:0:fc00:0:2:ff00::")
-
-        # verify that the mysid has been removed from the ASIC
-        self.adb.wait_for_n_keys("ASIC_STATE:SAI_OBJECT_TYPE_MY_SID_ENTRY", len(self.initial_my_sid_entries))
-
-        # unconfigure srv6 locator
-        dvs.runcmd("vtysh -c \"configure terminal\" -c \"segment-routing\" -c \"no srv6\"")
-
-        self.teardown_srv6(dvs)
-
-    def test_AddRemoveSrv6MySidUDT46(self, dvs, testlog):
-
-        _, output = dvs.runcmd(f"vtysh -c 'show zebra dplane providers'")
-        if 'dplane_fpm_sonic' not in output:
-            pytest.skip("'dplane_fpm_sonic' required for this test is not available, skipping", allow_module_level=True)
-
-        self.setup_srv6(dvs)
-
-        # configure srv6 usid locator
-        dvs.runcmd("vtysh -c \"configure terminal\" -c \"segment-routing\" -c \"srv6\" -c \"locators\" -c \"locator loc1\" -c \"prefix fc00:0:2::/48 block-len 32 node-len 16 func-bits 16\" -c \"behavior usid\"")
-
-        # create srv6 mysid udt46 behavior
-        dvs.runcmd("ip -6 route add fc00:0:2:ff05::/128 encap seg6local action End.DT46 vrftable {} dev sr0".format(self.vrf_table_id))
+        # create srv6 mysid udt6 behavior
+        dvs.runcmd("ip -6 route add fc00:0:2:ff05::/128 encap seg6local action End.DT6 vrftable {} dev sr0".format(self.vrf_table_id))
 
         # check application database
         self.pdb.wait_for_entry("SRV6_MY_SID_TABLE", "32:16:16:0:fc00:0:2:ff05::")
@@ -1063,12 +973,12 @@ class TestSrv6MySidFpmsyncd(object):
         assert status == True
         for fv in fvs:
             if fv[0] == "SAI_MY_SID_ENTRY_ATTR_ENDPOINT_BEHAVIOR":
-                assert fv[1] == "SAI_MY_SID_ENTRY_ENDPOINT_BEHAVIOR_DT46"
+                assert fv[1] == "SAI_MY_SID_ENTRY_ENDPOINT_BEHAVIOR_DT6"
             if fv[0] == "SAI_MY_SID_ENTRY_ATTR_VRF":
                 assert fv[1] == self.vrf_id
 
-        # remove srv6 mysid udt46 behavior
-        dvs.runcmd("ip -6 route del fc00:0:2:ff05::/128 encap seg6local action End.DT46 vrftable {} dev sr0".format(self.vrf_table_id))
+        # remove srv6 mysid udt6 behavior
+        dvs.runcmd("ip -6 route del fc00:0:2:ff05::/128 encap seg6local action End.DT6 vrftable {} dev sr0".format(self.vrf_table_id))
 
         # check application database
         self.pdb.wait_for_deleted_entry("SRV6_MY_SID_TABLE", "32:16:16:0:fc00:0:2:ff05::")
