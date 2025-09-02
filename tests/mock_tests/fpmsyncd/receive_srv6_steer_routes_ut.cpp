@@ -224,6 +224,176 @@ namespace ut_fpmsyncd
         free_nlobj(nl_obj);
     }
 
+    /* Test receiving two IPv4 prefixes steered over the same SID list */
+    TEST_F(FpmSyncdSRv6RoutesTest, RecevingMultipleIPv4PrefixesSameSidList)
+    {
+        ASSERT_NE(m_routeSync, nullptr);
+
+        struct nlmsg *nl_obj;
+        std::string path;
+        std::string segment;
+        std::string seg_src;
+        IpPrefix prefix1 = IpPrefix("192.168.6.0/24");
+        IpPrefix prefix2 = IpPrefix("192.168.29.0/24");
+        IpAddress segment_list = IpAddress("fcbb:bbbb:2:3::");
+        IpAddress encap_src_addr = IpAddress("fcbb:bbbb:1::1");
+
+        /* Create a Netlink RTM_NEWROUTE message for the first prefix and send the message to fpmsyncd */
+        nl_obj = create_srv6_vpn_route_nlmsg(RTM_NEWROUTE, &prefix1, &encap_src_addr, &segment_list);
+        if (!nl_obj)
+            throw std::runtime_error("Failed to create Netlink RTM_NEWROUTE message");
+
+        ASSERT_EQ(m_fpmLink->isRawProcessing(&nl_obj->n), true);
+        m_fpmLink->processRawMsg(&nl_obj->n);
+
+        free_nlobj(nl_obj);
+
+        /* Create a Netlink RTM_NEWROUTE message for the second prefix and send the message to fpmsyncd */
+        nl_obj = create_srv6_vpn_route_nlmsg(RTM_NEWROUTE, &prefix2, &encap_src_addr, &segment_list);
+        if (!nl_obj)
+            throw std::runtime_error("Failed to create Netlink RTM_NEWROUTE message");
+
+        ASSERT_EQ(m_fpmLink->isRawProcessing(&nl_obj->n), true);
+        m_fpmLink->processRawMsg(&nl_obj->n);
+
+        free_nlobj(nl_obj);
+
+	/* Ensure fpmsyncd creates the SID list entry in APPL_DB */
+        ASSERT_EQ(m_srv6SidListTable->hget("fcbb:bbbb:2:3::", "path", path), true);
+        ASSERT_EQ(path, segment_list.to_string());
+
+	/* Ensure fpmsyncd creates a route entry for the first prefix in APP_DB and route entry has a pointer to the SID list entry*/
+        ASSERT_EQ(m_routeTable->hget("Vrf10:192.168.6.0/24", "segment", segment), true);
+        ASSERT_EQ(segment, "fcbb:bbbb:2:3::");
+
+        ASSERT_EQ(m_routeTable->hget("Vrf10:192.168.6.0/24", "seg_src", seg_src), true);
+        ASSERT_EQ(seg_src, encap_src_addr.to_string());
+
+	/* Ensure fpmsyncd creates a route entry for the second prefix in APP_DB and route entry has a pointer to the SID list entry*/
+        ASSERT_EQ(m_routeTable->hget("Vrf10:192.168.29.0/24", "segment", segment), true);
+        ASSERT_EQ(segment, "fcbb:bbbb:2:3::");
+
+        ASSERT_EQ(m_routeTable->hget("Vrf10:192.168.29.0/24", "seg_src", seg_src), true);
+        ASSERT_EQ(seg_src, encap_src_addr.to_string());
+
+
+        /* Create a Netlink RTM_DELROUTE message for the first prefix and send the message to fpmsyncd */
+        nl_obj = create_srv6_vpn_route_nlmsg(RTM_DELROUTE, &prefix1, &encap_src_addr, &segment_list);
+        if (!nl_obj)
+            throw std::runtime_error("Failed to create Netlink RTM_DELROUTE message");
+
+        ASSERT_EQ(m_fpmLink->isRawProcessing(&nl_obj->n), true);
+        m_fpmLink->processRawMsg(&nl_obj->n);
+
+        free_nlobj(nl_obj);
+
+        /* Create a Netlink RTM_DELROUTE message for the second prefix and send the message to fpmsyncd */
+        nl_obj = create_srv6_vpn_route_nlmsg(RTM_DELROUTE, &prefix2, &encap_src_addr, &segment_list);
+        if (!nl_obj)
+            throw std::runtime_error("Failed to create Netlink RTM_DELROUTE message");
+
+        ASSERT_EQ(m_fpmLink->isRawProcessing(&nl_obj->n), true);
+        m_fpmLink->processRawMsg(&nl_obj->n);
+
+        free_nlobj(nl_obj);
+
+	/* Ensures fpmsyncd removes the SID list entry from APP_DB */
+        ASSERT_EQ(m_srv6SidListTable->hget("fcbb:bbbb:2:3::", "path", path), false);
+
+	/* Ensures fpmsyncd removes the route entry for the first prefix from APP_DB */
+        ASSERT_EQ(m_routeTable->hget("Vrf10:192.168.6.0/24", "segment", segment), false);
+        ASSERT_EQ(m_routeTable->hget("Vrf10:192.168.6.0/24", "seg_src", seg_src), false);
+
+	/* Ensures fpmsyncd removes the route entry for the second prefix from APP_DB */
+        ASSERT_EQ(m_routeTable->hget("Vrf10:192.168.29.0/24", "segment", segment), false);
+        ASSERT_EQ(m_routeTable->hget("Vrf10:192.168.29.0/24", "seg_src", seg_src), false);
+    }
+
+    /* Test receiving two IPv6 prefixes steered over the same SID list */
+    TEST_F(FpmSyncdSRv6RoutesTest, RecevingMultipleIPv6PrefixesSameSidList)
+    {
+        ASSERT_NE(m_routeSync, nullptr);
+
+        struct nlmsg *nl_obj;
+        std::string path;
+        std::string segment;
+        std::string seg_src;
+        IpPrefix prefix1 = IpPrefix("2001:db8:1:6::/64");
+        IpPrefix prefix2 = IpPrefix("2001:db8:1:29::/64");
+        IpAddress segment_list = IpAddress("fcbb:bbbb:2:3::");
+        IpAddress encap_src_addr = IpAddress("fcbb:bbbb:1::1");
+
+        /* Create a Netlink RTM_NEWROUTE message for the first prefix and send the message to fpmsyncd */
+        nl_obj = create_srv6_vpn_route_nlmsg(RTM_NEWROUTE, &prefix1, &encap_src_addr, &segment_list);
+        if (!nl_obj)
+            throw std::runtime_error("Failed to create Netlink RTM_NEWROUTE message");
+
+        ASSERT_EQ(m_fpmLink->isRawProcessing(&nl_obj->n), true);
+        m_fpmLink->processRawMsg(&nl_obj->n);
+
+        free_nlobj(nl_obj);
+
+        /* Create a Netlink RTM_NEWROUTE message for the second prefix and send the message to fpmsyncd */
+        nl_obj = create_srv6_vpn_route_nlmsg(RTM_NEWROUTE, &prefix2, &encap_src_addr, &segment_list);
+        if (!nl_obj)
+            throw std::runtime_error("Failed to create Netlink RTM_NEWROUTE message");
+
+        ASSERT_EQ(m_fpmLink->isRawProcessing(&nl_obj->n), true);
+        m_fpmLink->processRawMsg(&nl_obj->n);
+
+        free_nlobj(nl_obj);
+
+	/* Ensure fpmsyncd creates the SID list entry in APPL_DB */
+        ASSERT_EQ(m_srv6SidListTable->hget("fcbb:bbbb:2:3::", "path", path), true);
+        ASSERT_EQ(path, segment_list.to_string());
+
+	/* Ensure fpmsyncd creates a route entry for the first prefix in APP_DB and route entry has a pointer to the SID list entry*/
+        ASSERT_EQ(m_routeTable->hget("Vrf10:2001:db8:1:6::/64", "segment", segment), true);
+        ASSERT_EQ(segment, "fcbb:bbbb:2:3::");
+
+        ASSERT_EQ(m_routeTable->hget("Vrf10:2001:db8:1:6::/64", "seg_src", seg_src), true);
+        ASSERT_EQ(seg_src, encap_src_addr.to_string());
+
+	/* Ensure fpmsyncd creates a route entry for the second prefix in APP_DB and route entry has a pointer to the SID list entry*/
+        ASSERT_EQ(m_routeTable->hget("Vrf10:2001:db8:1:29::/64", "segment", segment), true);
+        ASSERT_EQ(segment, "fcbb:bbbb:2:3::");
+
+        ASSERT_EQ(m_routeTable->hget("Vrf10:2001:db8:1:29::/64", "seg_src", seg_src), true);
+        ASSERT_EQ(seg_src, encap_src_addr.to_string());
+
+
+        /* Create a Netlink RTM_DELROUTE message for the first prefix and send the message to fpmsyncd */
+        nl_obj = create_srv6_vpn_route_nlmsg(RTM_DELROUTE, &prefix1, &encap_src_addr, &segment_list);
+        if (!nl_obj)
+            throw std::runtime_error("Failed to create Netlink RTM_DELROUTE message");
+
+        ASSERT_EQ(m_fpmLink->isRawProcessing(&nl_obj->n), true);
+        m_fpmLink->processRawMsg(&nl_obj->n);
+
+        free_nlobj(nl_obj);
+
+        /* Create a Netlink RTM_DELROUTE message for the second prefix and send the message to fpmsyncd */
+        nl_obj = create_srv6_vpn_route_nlmsg(RTM_DELROUTE, &prefix2, &encap_src_addr, &segment_list);
+        if (!nl_obj)
+            throw std::runtime_error("Failed to create Netlink RTM_DELROUTE message");
+
+        ASSERT_EQ(m_fpmLink->isRawProcessing(&nl_obj->n), true);
+        m_fpmLink->processRawMsg(&nl_obj->n);
+
+        free_nlobj(nl_obj);
+
+	/* Ensures fpmsyncd removes the SID list entry from APP_DB */
+        ASSERT_EQ(m_srv6SidListTable->hget("fcbb:bbbb:2:3::", "path", path), false);
+
+	/* Ensures fpmsyncd removes the route entry for the first prefix from APP_DB */
+        ASSERT_EQ(m_routeTable->hget("Vrf10:2001:db8:1:6::/64", "segment", segment), false);
+        ASSERT_EQ(m_routeTable->hget("Vrf10:2001:db8:1:6::/64", "seg_src", seg_src), false);
+
+	/* Ensures fpmsyncd removes the route entry for the second prefix from APP_DB */
+        ASSERT_EQ(m_routeTable->hget("Vrf10:2001:db8:1:29::/64", "segment", segment), false);
+        ASSERT_EQ(m_routeTable->hget("Vrf10:2001:db8:1:29::/64", "seg_src", seg_src), false);
+    }
+
     /* Test Receiving an SRv6 VPN Route with missing destination prefix */
     TEST_F(FpmSyncdSRv6RoutesTest, SRv6VpnRoutesInvalidMissingDst)
     {
