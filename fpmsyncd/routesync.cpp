@@ -911,9 +911,64 @@ bool RouteSync::getSrv6SteerRouteNextHop(struct nlmsghdr *h, int received_bytes,
     }
     else
     {
-        /* This is a multipath route */
-        SWSS_LOG_NOTICE("Multipath SRv6 routes aren't supported");
-        return false;
+       /* This is a multipath route */
+        int len;
+        struct rtattr *subtb[RTA_MAX + 1];
+        struct rtnexthop *rtnh = (struct rtnexthop *)RTA_DATA(tb[RTA_MULTIPATH]);
+        len = (int)RTA_PAYLOAD(tb[RTA_MULTIPATH]);
+        bool first = true;
+
+        for (;;)
+        {
+            uint16_t encap = 0;
+        string vpn_sid_tmp;
+        string src_addr_tmp;
+            if (len < (int)sizeof(*rtnh) || rtnh->rtnh_len > len)
+            {
+                break;
+            }
+
+            if (rtnh->rtnh_len > sizeof(*rtnh))
+            {
+                memset(subtb, 0, sizeof(subtb));
+
+                netlink_parse_rtattr(subtb, RTA_MAX, RTNH_DATA(rtnh),
+                                          (int)(rtnh->rtnh_len - sizeof(*rtnh)));
+
+                if (subtb[RTA_ENCAP_TYPE])
+                {
+                        encap = *(uint16_t *)RTA_DATA(subtb[RTA_ENCAP_TYPE]);
+                }
+
+                if (subtb[RTA_ENCAP] && subtb[RTA_ENCAP_TYPE] &&
+                    *(uint16_t *)RTA_DATA(subtb[RTA_ENCAP_TYPE]) ==
+                        NH_ENCAP_SRV6_ROUTE)
+                {
+                     parseEncapSrv6SteerRoute(subtb[RTA_ENCAP], vpn_sid_tmp, src_addr_tmp);
+                }
+                SWSS_LOG_DEBUG("Multipath nexthop encap:%d vpn_sid:%s src_addr:%s",
+                        encap, vpn_sid_tmp.c_str(),
+                        src_addr_tmp.c_str());
+
+                if (!first) {
+                        vpn_sid += "|";
+                        src_addr += "|";
+                }
+
+                vpn_sid += vpn_sid_tmp;
+                src_addr += src_addr_tmp;
+
+                first = false;
+            }
+
+            if (rtnh->rtnh_len == 0)
+            {
+                break;
+            }
+
+            len -= NLMSG_ALIGN(rtnh->rtnh_len);
+            rtnh = RTNH_NEXT(rtnh);
+	}
     }
 
     return true;
