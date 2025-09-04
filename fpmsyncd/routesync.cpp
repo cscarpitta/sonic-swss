@@ -1174,7 +1174,7 @@ void RouteSync::onSrv6SteerRouteMsg(struct nlmsghdr *h, int len)
         SWSS_LOG_INFO("SRV6 RouteTable del msg: %s", routeTableKeyStr.c_str());
 
         /* Delete SID lists from SRV6_SID_LIST_TABLE */
-        vector<string> sidlists = tokenize(vpn_sid_str, ",");
+        vector<string> sidlists = tokenize(vpn_sid_str, ',');
         for (auto sidlist : sidlists)
         {
             m_srv6SidListTable.del(sidlist);
@@ -1187,14 +1187,14 @@ void RouteSync::onSrv6SteerRouteMsg(struct nlmsghdr *h, int len)
         string routeTableKeyStr = string(routeTableKey);
 
         /* Write SID lists to SRV6_SID_LIST_TABLE */
-        vector<string> sidlists = tokenize(vpn_sid_str, ",");
+        vector<string> sidlists = tokenize(vpn_sid_str, ',');
         for (auto sidlist : sidlists)
         {
             vector<FieldValueTuple> fvVectorSidList;
 
             string pathStr;
             bool is_first_path = true;
-            for (auto sid : tokenize(sidlist, "|"))
+            for (auto sid : tokenize(sidlist, '|'))
             {
                 pathStr += sid;
 
