@@ -1192,7 +1192,19 @@ void RouteSync::onSrv6SteerRouteMsg(struct nlmsghdr *h, int len)
         {
             vector<FieldValueTuple> fvVectorSidList;
 
-            FieldValueTuple path("path", sidlist);
+            string pathStr;
+            bool is_first_path = true;
+            for (auto sid : tokenize(sidlist, "|"))
+            {
+                pathStr += sid;
+
+                if (!is_first_path)
+                    pathStr += ",";
+
+                is_first_path = false;
+            }
+
+            FieldValueTuple path("path", pathStr);
             fvVectorSidList.push_back(path);
 
             m_srv6SidListTable.set(sidlist, fvVectorSidList);
