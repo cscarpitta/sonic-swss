@@ -1731,7 +1731,7 @@ class TestSrv6VpnFpmsyncd(object):
         # create v6 route with vpn sid
         dvs.runcmd("vtysh -c \"configure terminal\" vtysh -c \"ipv6 route 2001:db8:1:1::/64 sr0 vrf Vrf13 nexthop-vrf default segments fc00:0:1:e000::\"")
         dvs.runcmd("vtysh -c \"configure terminal\" vtysh -c \"ipv6 route 2001:db8:2:2::/64 sr0 vrf Vrf13 nexthop-vrf default segments fc00:0:1:e000::\"")
-        dvs.runcmd("vtysh -c \"configure terminal\" vtysh -c \"ipv6 route 2001:db8:2:2::/64 sr0 vrf Vrf13 nexthop-vrf default segments fc00:0:3:e000::\"")
+        dvs.runcmd("vtysh -c \"configure terminal\" vtysh -c \"ipv6 route 2001:db8:2:2::/64 sr0 vrf Vrf13 nexthop-vrf default segments fc00:0:9:8:7:6:5:4/fc00:0:3:e000::\"")
 
         time.sleep(3)
 
@@ -1741,16 +1741,16 @@ class TestSrv6VpnFpmsyncd(object):
         self.pdb.wait_for_field_match("ROUTE_TABLE", "Vrf13:2001:db8:1:1::/64", expected_fields)
 
         self.pdb.wait_for_entry("ROUTE_TABLE", "Vrf13:2001:db8:2:2::/64")
-        expected_fields = {"segment": "fc00:0:1:e000::,fc00:0:3:e000::", "seg_src": "fc00:0:2::1"}
+        expected_fields = {"segment": "fc00:0:1:e000::,fc00:0:9:8:7:6:5:4|fc00:0:3:e000::", "seg_src": "fc00:0:2::1"}
         self.pdb.wait_for_field_match("ROUTE_TABLE", "Vrf13:2001:db8:2:2::/64", expected_fields)
 
         self.pdb.wait_for_entry("SRV6_SID_LIST_TABLE", "fc00:0:1:e000::")
         expected_fields = {"path": "fc00:0:1:e000::"}
         self.pdb.wait_for_field_match("SRV6_SID_LIST_TABLE", "fc00:0:1:e000::", expected_fields)
 
-        self.pdb.wait_for_entry("SRV6_SID_LIST_TABLE", "fc00:0:3:e000::")
-        expected_fields = {"path": "fc00:0:3:e000::"}
-        self.pdb.wait_for_field_match("SRV6_SID_LIST_TABLE", "fc00:0:3:e000::", expected_fields)
+        self.pdb.wait_for_entry("SRV6_SID_LIST_TABLE", "fc00:0:9:8:7:6:5:4|fc00:0:3:e000::")
+        expected_fields = {"path": "fc00:0:9:8:7:6:5:4,fc00:0:3:e000::"}
+        self.pdb.wait_for_field_match("SRV6_SID_LIST_TABLE", "fc00:0:9:8:7:6:5:4|fc00:0:3:e000::", expected_fields)
 
         # verify that the route has been programmed into the ASIC
         self.adb.wait_for_n_keys("ASIC_STATE:SAI_OBJECT_TYPE_TUNNEL", len(tunnel_entries) + 1)
@@ -1784,7 +1784,7 @@ class TestSrv6VpnFpmsyncd(object):
                 if fv[0] == "SAI_SRV6_SIDLIST_ATTR_SEGMENT_LIST":
                     if fv[1] == "1:fc00:0:1:e000::":
                         sidlist_id_1 = sidlist_id
-                    else if fv[1] in "1:fc00:0:3:e000::":
+                    else if fv[1] in "2:fc00:0:9:8:7:6:5:4,fc00:0:3:e000::":
                         sidlist_id_2 = sidlist_id
                     else:
                         assert False, "Sidlist %s not expected" % fv[1]
@@ -1860,7 +1860,7 @@ class TestSrv6VpnFpmsyncd(object):
         # remove v4 route with vpn sid
         dvs.runcmd("vtysh -c \"configure terminal\" vtysh -c \"no ipv6 route 2001:db8:1:1::/64 sr0 vrf Vrf13 nexthop-vrf default segments fc00:0:1:e000::\"")
         dvs.runcmd("vtysh -c \"configure terminal\" vtysh -c \"no ipv6 route 2001:db8:2:2::/64 sr0 vrf Vrf13 nexthop-vrf default segments fc00:0:1:e000::\"")
-        dvs.runcmd("vtysh -c \"configure terminal\" vtysh -c \"no ipv6 route 2001:db8:2:2::/64 sr0 vrf Vrf13 nexthop-vrf default segments fc00:0:3:e000::\"")
+        dvs.runcmd("vtysh -c \"configure terminal\" vtysh -c \"no ipv6 route 2001:db8:2:2::/64 sr0 vrf Vrf13 nexthop-vrf default segments fc00:0:9:8:7:6:5:4/fc00:0:3:e000::\"")
 
         time.sleep(3)
 
@@ -1868,7 +1868,7 @@ class TestSrv6VpnFpmsyncd(object):
         self.pdb.wait_for_deleted_entry("ROUTE_TABLE", "Vrf13:2001:db8:1:1::/64")
         self.pdb.wait_for_deleted_entry("ROUTE_TABLE", "Vrf13:2001:db8:2:2::/64")
         self.pdb.wait_for_deleted_entry("SRV6_SID_LIST_TABLE", "fc00:0:1:e000::")
-        self.pdb.wait_for_deleted_entry("SRV6_SID_LIST_TABLE", "fc00:0:3:e000::")
+        self.pdb.wait_for_deleted_entry("SRV6_SID_LIST_TABLE", "fc00:0:9:8:7:6:5:4|fc00:0:3:e000::")
 
         # verify that the route has been removed from the ASIC
         self.adb.wait_for_n_keys("ASIC_STATE:SAI_OBJECT_TYPE_NEXT_HOP_GROUP", len(nexthop_group_entries))
