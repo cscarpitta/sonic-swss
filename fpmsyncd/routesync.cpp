@@ -266,7 +266,7 @@ void RouteSync::parseEncapSrv6SteerRoute(struct rtattr *tb, string &vpn_sid,
     char src_addr_buf[MAX_ADDR_SIZE + 1] = {0};
     uint8_t num_segs = 1;
     struct in6_addr segs_buf[256] = {0};
-    bool first = true;
+    bool is_first_sid = true;
 
     parseRtAttrNested(tb_encap, 256, tb);
 
@@ -281,14 +281,14 @@ void RouteSync::parseEncapSrv6SteerRoute(struct rtattr *tb, string &vpn_sid,
         memcpy(segs_buf, (char *)RTA_DATA(tb_encap[ROUTE_ENCAP_SRV6_SIDS]),
                                           num_segs * 16);
 
-        for (int i = 0; i <= num_segs; i++)
+        for (int i = 0; i < num_segs; i++)
         {
             vpn_sid += inet_ntop(AF_INET6, &segs_buf[i], vpn_sid_buf, MAX_ADDR_SIZE);
 
-            if (!first)
+            if (!is_first_sid)
                 vpn_sid += "|";
 
-            first = false;
+            is_first_sid = false;
         }
     }
 
