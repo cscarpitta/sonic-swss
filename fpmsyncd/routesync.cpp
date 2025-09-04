@@ -911,18 +911,19 @@ bool RouteSync::getSrv6SteerRouteNextHop(struct nlmsghdr *h, int received_bytes,
     }
     else
     {
-       /* This is a multipath route */
+        /* This is a multipath route */
         int len;
         struct rtattr *subtb[RTA_MAX + 1];
         struct rtnexthop *rtnh = (struct rtnexthop *)RTA_DATA(tb[RTA_MULTIPATH]);
         len = (int)RTA_PAYLOAD(tb[RTA_MULTIPATH]);
-        bool first = true;
 
         for (;;)
         {
             uint16_t encap = 0;
-        string vpn_sid_tmp;
-        string src_addr_tmp;
+            bool first_nh = true;
+            string nh_sid;
+            string nh_src_addr;
+
             if (len < (int)sizeof(*rtnh) || rtnh->rtnh_len > len)
             {
                 break;
@@ -933,32 +934,37 @@ bool RouteSync::getSrv6SteerRouteNextHop(struct nlmsghdr *h, int received_bytes,
                 memset(subtb, 0, sizeof(subtb));
 
                 netlink_parse_rtattr(subtb, RTA_MAX, RTNH_DATA(rtnh),
-                                          (int)(rtnh->rtnh_len - sizeof(*rtnh)));
+                                     (int)(rtnh->rtnh_len - sizeof(*rtnh)));
 
                 if (subtb[RTA_ENCAP_TYPE])
                 {
-                        encap = *(uint16_t *)RTA_DATA(subtb[RTA_ENCAP_TYPE]);
+                    encap = *(uint16_t *)RTA_DATA(subtb[RTA_ENCAP_TYPE]);
                 }
 
                 if (subtb[RTA_ENCAP] && subtb[RTA_ENCAP_TYPE] &&
                     *(uint16_t *)RTA_DATA(subtb[RTA_ENCAP_TYPE]) ==
                         NH_ENCAP_SRV6_ROUTE)
                 {
-                     parseEncapSrv6SteerRoute(subtb[RTA_ENCAP], vpn_sid_tmp, src_addr_tmp);
+                    parseEncapSrv6SteerRoute(subtb[RTA_ENCAP], nh_sid, nh_src_addr);
                 }
-                SWSS_LOG_DEBUG("Multipath nexthop encap:%d vpn_sid:%s src_addr:%s",
-                        encap, vpn_sid_tmp.c_str(),
-                        src_addr_tmp.c_str());
+                SWSS_LOG_DEBUG("Multipath nexthop encap:%d nh_sid:%s nh_src_addr:%s",
+                               encap, nh_sid.c_str(), nh_src_addr.c_str());
 
-                if (!first) {
-                        vpn_sid += "|";
-                        src_addr += "|";
+                if (nh_sid.empty())
+                {
+                    SWSS_LOG_ERROR("Received an invalid SRv6 nexthop: SID is missing. Skipping.");
+                    continue;
                 }
 
-                vpn_sid += vpn_sid_tmp;
-                src_addr += src_addr_tmp;
+                if (!first_nh) {
+                    vpn_sid += ",";
+                    src_addr += ",";
+                }
 
-                first = false;
+                vpn_sid += nh_sid;
+                src_addr += nh_src_addr;
+
+                first_nh = false;
             }
 
             if (rtnh->rtnh_len == 0)
@@ -968,7 +974,7 @@ bool RouteSync::getSrv6SteerRouteNextHop(struct nlmsghdr *h, int received_bytes,
 
             len -= NLMSG_ALIGN(rtnh->rtnh_len);
             rtnh = RTNH_NEXT(rtnh);
-	}
+        }
     }
 
     return true;
@@ -1136,36 +1142,44 @@ void RouteSync::onSrv6SteerRouteMsg(struct nlmsghdr *h, int len)
     if (nlmsg_type == RTM_DELROUTE)
     {
         string routeTableKeyStr = string(routeTableKey);
-        string srv6SidListTableKey = routeTableKeyStr;
 
 
         vector<FieldValueTuple> fvVector;
         setRouteWithWarmRestart(routeTableKeyStr, fvVector, m_routeTable, DEL_COMMAND);
         SWSS_LOG_INFO("SRV6 RouteTable del msg: %s", routeTableKeyStr.c_str());
-        m_srv6SidListTable.del(srv6SidListTableKey);
+
+        /* Delete SID lists from SRV6_SID_LIST_TABLE */
+        vector<string> sidlists = tokenize(vpn_sid_str, ",");
+        for (auto sidlist : sidlists)
+        {
+            m_srv6SidListTable.del(sidlist);
+            SWSS_LOG_DEBUG("Srv6SidListTable del msg: %s", sidlist.c_str());
+        }
         return;
     }
     else if (nlmsg_type == RTM_NEWROUTE)
     {
         string routeTableKeyStr = string(routeTableKey);
-        /* Write SID list to SRV6_SID_LIST_TABLE */
 
-        string srv6SidListTableKey = routeTableKeyStr;
+        /* Write SID lists to SRV6_SID_LIST_TABLE */
+        vector<string> sidlists = tokenize(vpn_sid_str, ",");
+        for (auto sidlist : sidlists)
+        {
+            vector<FieldValueTuple> fvVectorSidList;
 
-        vector<FieldValueTuple> fvVectorSidList;
+            FieldValueTuple path("path", sidlist);
+            fvVectorSidList.push_back(path);
 
-        FieldValueTuple path("path", vpn_sid_str);
-        fvVectorSidList.push_back(path);
-
-        m_srv6SidListTable.set(srv6SidListTableKey, fvVectorSidList);
-        SWSS_LOG_DEBUG("Srv6SidListTable set msg: %s path: %s",
-                        srv6SidListTableKey.c_str(), vpn_sid_str.c_str());
+            m_srv6SidListTable.set(sidlist, fvVectorSidList);
+            SWSS_LOG_DEBUG("Srv6SidListTable set msg: %s path: %s",
+                           sidlist.c_str(), vpn_sid_str.c_str());
+        }
 
         /* Write route to ROUTE_TABLE */
 
         vector<FieldValueTuple> fvVectorRoute;
 
-        FieldValueTuple vpn_sid("segment", srv6SidListTableKey);
+        FieldValueTuple vpn_sid("segment", vpn_sid_str);
         fvVectorRoute.push_back(vpn_sid);
 
         if (!src_addr_str.empty())
