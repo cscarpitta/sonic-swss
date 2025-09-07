@@ -1609,7 +1609,7 @@ class TestSrv6VpnFpmsyncd(object):
                 if fv[0] == "SAI_SRV6_SIDLIST_ATTR_SEGMENT_LIST":
                     if fv[1] == "1:fc00:0:1:e000::":
                         sidlist_id_1 = sidlist_id
-                    else if fv[1] in "2:fc00:0:9:8:7:6:5:4,fc00:0:3:e000::":
+                    elif fv[1] in "2:fc00:0:9:8:7:6:5:4,fc00:0:3:e000::":
                         sidlist_id_2 = sidlist_id
                     else:
                         assert False, "Sidlist %s not expected" % fv[1]
@@ -1627,7 +1627,7 @@ class TestSrv6VpnFpmsyncd(object):
                 if fv[0] == "SAI_NEXT_HOP_ATTR_SRV6_SIDLIST_ID":
                     if fv[1] == sidlist_id_1:
                         nexthop_id_1 = nexthop_id
-                    else if fv[1] == sidlist_id_2:
+                    elif fv[1] == sidlist_id_2:
                         nexthop_id_2 = nexthop_id
                     else:
                         assert False, "Nexthop with sidlist %s not expected" % fv[1]
@@ -1653,7 +1653,7 @@ class TestSrv6VpnFpmsyncd(object):
                 if fv[0] == "SAI_NEXT_HOP_GROUP_MEMBER_ATTR_NEXT_HOP_ID":
                     if fv[1] == nexthop_id_1:
                         nexthop_group_member_id_1 = nexthop_group_member_id
-                    else if fv[1] == nexthop_id_2:
+                    elif fv[1] == nexthop_id_2:
                         nexthop_group_member_id_2 = nexthop_group_member_id
                     else:
                         assert False, "Nexthop group member for nexthop id %s not expected" % fv[1]
@@ -1667,7 +1667,7 @@ class TestSrv6VpnFpmsyncd(object):
                 if fv[0] == "SAI_ROUTE_ENTRY_ATTR_NEXT_HOP_ID":
                     if route_key["destination"] == "192.0.2.0/24":
                         assert fv[1] == nexthop_id_1
-                    else if route_key["destination"] == "192.0.3.0/24":
+                    elif route_key["destination"] == "192.0.3.0/24":
                         assert fv[1] == nexthop_group_id
                     else:
                         assert False, "Route with destination %s not expected" % route_key["destination"]
@@ -1784,7 +1784,7 @@ class TestSrv6VpnFpmsyncd(object):
                 if fv[0] == "SAI_SRV6_SIDLIST_ATTR_SEGMENT_LIST":
                     if fv[1] == "1:fc00:0:1:e000::":
                         sidlist_id_1 = sidlist_id
-                    else if fv[1] in "2:fc00:0:9:8:7:6:5:4,fc00:0:3:e000::":
+                    elif fv[1] in "2:fc00:0:9:8:7:6:5:4,fc00:0:3:e000::":
                         sidlist_id_2 = sidlist_id
                     else:
                         assert False, "Sidlist %s not expected" % fv[1]
@@ -1802,7 +1802,7 @@ class TestSrv6VpnFpmsyncd(object):
                 if fv[0] == "SAI_NEXT_HOP_ATTR_SRV6_SIDLIST_ID":
                     if fv[1] == sidlist_id_1:
                         nexthop_id_1 = nexthop_id
-                    else if fv[1] == sidlist_id_2:
+                    elif fv[1] == sidlist_id_2:
                         nexthop_id_2 = nexthop_id
                     else:
                         assert False, "Nexthop with sidlist %s not expected" % fv[1]
@@ -1828,7 +1828,7 @@ class TestSrv6VpnFpmsyncd(object):
                 if fv[0] == "SAI_NEXT_HOP_GROUP_MEMBER_ATTR_NEXT_HOP_ID":
                     if fv[1] == nexthop_id_1:
                         nexthop_group_member_id_1 = nexthop_group_member_id
-                    else if fv[1] == nexthop_id_2:
+                    elif fv[1] == nexthop_id_2:
                         nexthop_group_member_id_2 = nexthop_group_member_id
                     else:
                         assert False, "Nexthop group member for nexthop id %s not expected" % fv[1]
@@ -1842,7 +1842,7 @@ class TestSrv6VpnFpmsyncd(object):
                 if fv[0] == "SAI_ROUTE_ENTRY_ATTR_NEXT_HOP_ID":
                     if route_key["destination"] == "2001:db8:1:1::/64":
                         assert fv[1] == nexthop_id_1
-                    else if route_key["destination"] == "2001:db8:2:2::/64":
+                    elif route_key["destination"] == "2001:db8:2:2::/64":
                         assert fv[1] == nexthop_group_id
                     else:
                         assert False, "Route with destination %s not expected" % route_key["destination"]
